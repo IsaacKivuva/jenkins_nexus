@@ -76,11 +76,11 @@ pipeline {
                 )]) {
                     sh """
                         AUTH=\$(echo -n "\${NEXUS_USER}:\${NEXUS_PASS}" | base64)
-                        echo "registry=${NEXUS_REGISTRY}" > .npmrc
-                        echo "_auth=\${AUTH}" >> .npmrc
-                        echo "always-auth=true" >> .npmrc
+                        echo "registry=${NEXUS_REGISTRY}" > dist/.npmrc
+                        echo "_auth=\${AUTH}" >> dist/.npmrc
+                        echo "always-auth=true" >> dist/.npmrc
                         cd dist && npm publish --registry ${NEXUS_REGISTRY}
-                        rm -f ../.npmrc
+                        rm -f dist/.npmrc
                     """
                 }
             }
