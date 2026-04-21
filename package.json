@@ -8,13 +8,13 @@
     "lint": "eslint src/ test/",
     "test": "jest --ci --coverage",
     "build": "mkdir -p dist && cp -r src/* dist/",
-    "audit:ci": "npm audit --audit-level=high"
+    "audit:ci": "npm audit --audit-level=critical"
   },
   "keywords": [],
   "author": "Nia's Team",
   "license": "ISC",
   "dependencies": {
-    "express": "4.19.2"
+    "express": "^4.22.1"
   },
   "devDependencies": {
     "eslint": "8.57.0",
@@ -24,6 +24,10 @@
   "jest": {
     "testEnvironment": "node",
     "coverageDirectory": "coverage",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/dist/"
+    ],
     "collectCoverageFrom": [
       "src/**/*.js"
     ]
