@@ -1,10 +1,5 @@
 pipeline {
-    agent {
-        docker {
-            image 'node:20.14.0-alpine3.19'
-            args '-u root --group-add 999'
-        }
-    }
+    agent any
 
     environment {
         APP_NAME         = 'ci-pipeline-app'
@@ -35,12 +30,7 @@ pipeline {
                 echo "Building version ${ARTIFACT_VERSION}..."
                 sh 'npm run build'
                 sh """
-                    node -e "
-                      const fs = require('fs');
-                      const pkg = require('./package.json');
-                      pkg.version = '${ARTIFACT_VERSION}';
-                      fs.writeFileSync('./dist/package.json', JSON.stringify(pkg, null, 2));
-                    "
+                    node -e "const fs=require('fs');const pkg=require('./package.json');pkg.version='${ARTIFACT_VERSION}';fs.writeFileSync('./dist/package.json',JSON.stringify(pkg,null,2));"
                 """
             }
         }
@@ -99,8 +89,7 @@ pipeline {
 
     post {
         always {
-            echo "Pipeline finished — cleaning up."
-            cleanWs()
+            echo "Pipeline complete."
         }
         success {
             echo "SUCCESS: ${env.APP_NAME}-${env.ARTIFACT_VERSION} published to Nexus."
@@ -109,7 +98,7 @@ pipeline {
             echo "FAILED: Check the stage above. Nothing was published to Nexus."
         }
         changed {
-            echo "STATUS CHANGED: Pipeline went from ${currentBuild.previousBuild?.result ?: 'N/A'} to ${currentBuild.currentResult}."
+            echo "STATUS CHANGED: now ${currentBuild.currentResult}."
         }
     }
 }
