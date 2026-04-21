@@ -82,10 +82,10 @@ pipeline {
                 )]) {
                     sh """
                         AUTH=\$(echo -n "\${NEXUS_USER}:\${NEXUS_PASS}" | base64)
-                        echo "registry=${NEXUS_REGISTRY}" > dist/.npmrc
-                        echo "_auth=\${AUTH}" >> dist/.npmrc
+                        echo "registry=http://nexus:8081/repository/npm-hosted/" > dist/.npmrc
+                        echo "//nexus:8081/repository/npm-hosted/:_auth=\${AUTH}" >> dist/.npmrc
                         echo "always-auth=true" >> dist/.npmrc
-                        cd dist && npm publish --registry ${NEXUS_REGISTRY}
+                        cd dist && npm publish --registry http://nexus:8081/repository/npm-hosted/
                         rm -f dist/.npmrc
                     """
                 }
