@@ -17,6 +17,12 @@ pipeline {
 
     stages {
 
+        stage('Prepare') {
+            steps {
+                sh 'rm -f ~/.npmrc .npmrc dist/.npmrc || true'
+            }
+        }
+
         stage('Lint') {
             steps {
                 echo "Running ESLint..."
