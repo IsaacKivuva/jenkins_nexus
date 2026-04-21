@@ -2,16 +2,15 @@ pipeline {
     agent {
         docker {
             image 'node:20.14.0-alpine3.19'
-            args '--user root'
+            args '-u root --group-add 999'
         }
     }
 
     environment {
-        APP_NAME        = 'ci-pipeline-app'
-        NEXUS_REGISTRY  = 'http://nexus:8081/repository/npm-hosted/'
-        NEXUS_REALM     = 'nexus'
-        GIT_SHA         = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-        PKG_VERSION     = sh(script: "node -p \"require('./package.json').version\"", returnStdout: true).trim()
+        APP_NAME         = 'ci-pipeline-app'
+        NEXUS_REGISTRY   = 'http://nexus:8081/repository/npm-hosted/'
+        GIT_SHA          = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+        PKG_VERSION      = sh(script: "node -p \"require('./package.json').version\"", returnStdout: true).trim()
         ARTIFACT_VERSION = "${PKG_VERSION}-${GIT_SHA}"
     }
 
@@ -25,7 +24,7 @@ pipeline {
 
         stage('Lint') {
             steps {
-                echo "Running ESLint on source and test files..."
+                echo "Running ESLint..."
                 sh 'npm ci'
                 sh 'npm run lint'
             }
@@ -33,7 +32,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                echo "Building application artifact version ${ARTIFACT_VERSION}..."
+                echo "Building version ${ARTIFACT_VERSION}..."
                 sh 'npm run build'
                 sh """
                     node -e "
@@ -50,18 +49,13 @@ pipeline {
             parallel {
                 stage('Test') {
                     steps {
-                        echo "Running Jest test suite..."
+                        echo "Running tests..."
                         sh 'npm test'
-                    }
-                    post {
-                        always {
-                            junit testResults: 'coverage/junit.xml', allowEmptyResults: true
-                        }
                     }
                 }
                 stage('Security Audit') {
                     steps {
-                        echo "Running npm security audit..."
+                        echo "Running security audit..."
                         sh 'npm run audit:ci'
                     }
                 }
@@ -70,13 +64,12 @@ pipeline {
 
         stage('Archive') {
             steps {
-                echo "Packaging artifact ${APP_NAME}-${ARTIFACT_VERSION}.tgz..."
+                echo "Archiving artifact..."
                 sh """
                     cd dist
                     npm pack
                     mv *.tgz ../${APP_NAME}-${ARTIFACT_VERSION}.tgz
                 """
-                fingerprint "${APP_NAME}-${ARTIFACT_VERSION}.tgz"
                 archiveArtifacts artifacts: "${APP_NAME}-${ARTIFACT_VERSION}.tgz",
                                  fingerprint: true,
                                  onlyIfSuccessful: true
@@ -85,7 +78,7 @@ pipeline {
 
         stage('Publish') {
             steps {
-                echo "Publishing ${ARTIFACT_VERSION} to Nexus registry..."
+                echo "Publishing to Nexus..."
                 withCredentials([usernamePassword(
                     credentialsId: 'nexus-npm-credentials',
                     usernameVariable: 'NEXUS_USER',
@@ -96,9 +89,7 @@ pipeline {
                         echo "registry=${NEXUS_REGISTRY}" > .npmrc
                         echo "_auth=\${AUTH}" >> .npmrc
                         echo "always-auth=true" >> .npmrc
-
                         cd dist && npm publish --registry ${NEXUS_REGISTRY}
-
                         rm -f ../.npmrc
                     """
                 }
@@ -108,42 +99,17 @@ pipeline {
 
     post {
         always {
-            echo "Cleaning up workspace..."
-            sh 'rm -f .npmrc'
+            echo "Pipeline finished — cleaning up."
             cleanWs()
-            junit testResults: 'coverage/junit.xml', allowEmptyResults: true
         }
         success {
-            echo """
-            ============================================
-            BUILD SUCCESS
-            Artifact : ${env.APP_NAME}-${env.ARTIFACT_VERSION}.tgz
-            Registry : ${env.NEXUS_REGISTRY}
-            Build    : ${env.BUILD_URL}
-            ============================================
-            """
+            echo "SUCCESS: ${env.APP_NAME}-${env.ARTIFACT_VERSION} published to Nexus."
         }
         failure {
-            echo """
-            ============================================
-            BUILD FAILED
-            Branch   : ${env.GIT_BRANCH}
-            Commit   : ${env.GIT_SHA}
-            Build    : ${env.BUILD_URL}
-            Action   : Review the failed stage above.
-                       No artifact was published to Nexus.
-            ============================================
-            """
+            echo "FAILED: Check the stage above. Nothing was published to Nexus."
         }
         changed {
-            echo """
-            ============================================
-            PIPELINE STATUS CHANGED
-            Previous : ${currentBuild.previousBuild?.result ?: 'N/A'}
-            Current  : ${currentBuild.currentResult}
-            Branch   : ${env.GIT_BRANCH}
-            ============================================
-            """
+            echo "STATUS CHANGED: Pipeline went from ${currentBuild.previousBuild?.result ?: 'N/A'} to ${currentBuild.currentResult}."
         }
     }
 }

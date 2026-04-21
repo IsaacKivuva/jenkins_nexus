@@ -1,5 +1,6 @@
 FROM jenkins/jenkins:lts
 USER root
+
 RUN apt-get update && \
     apt-get install -y ca-certificates curl gnupg && \
     install -m 0755 -d /etc/apt/keyrings && \
@@ -9,4 +10,8 @@ RUN apt-get update && \
     apt-get update && \
     apt-get install -y docker-ce-cli && \
     apt-get clean
+
+# Add jenkins user to the docker group (group ID 999 matches host Docker)
+RUN groupadd -f -g 999 docker && usermod -aG docker jenkins
+
 USER jenkins
